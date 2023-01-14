@@ -1,5 +1,5 @@
 all :
-	$(CC) *.c -marm -Os -o procrank -I.
+	$(CC) *.c -Os -o procrank -I.
 
 install :
 	@cp procrank /usr/bin

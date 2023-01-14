@@ -69,6 +69,17 @@ enum {
     MEMINFO_COUNT
 };
 
+// added by charles
+enum {
+    CHECK_NONE,
+    CHECK_USS,
+    CHECK_PSS,
+    CHECK_FINAL
+};
+#define DEFAULT_CHECK_CONTINUOUS_COUNT 2
+#define DEFAULT_CHECK_MAX_PEAK_COUNT 3
+#define DEFAULT_CHECK_WAITING_SECONDS 2
+
 void get_mem_info(uint64_t mem[]) {
     char buffer[1024];
     unsigned int numFound = 0;
@@ -213,6 +224,45 @@ int main(int argc, char *argv[]) {
     order = -1;
     ws = WS_OFF;
 
+    int c;
+    int checkWhat = CHECK_USS;
+    int checkContinuousCount = DEFAULT_CHECK_CONTINUOUS_COUNT;
+    int checkMaxPeakCount = DEFAULT_CHECK_MAX_PEAK_COUNT;
+    int checkWaitingSeconds = DEFAULT_CHECK_WAITING_SECONDS;
+    while ((c = getopt (argc, argv, "hpuc:m:w:")) != -1){
+        switch (c)
+        {
+        case 'h':
+            usage(argv[0]);
+            exit(0);
+            break;
+        case 'p':
+            checkWhat = CHECK_PSS;
+            break;
+        case 'u':
+            checkWhat = CHECK_USS;
+            break;
+        case 'c':
+            checkContinuousCount = atoi(optarg);
+            break;
+        case 'm':
+            checkMaxPeakCount = atoi(optarg);
+            break;
+        case 'w':
+            checkWaitingSeconds = atoi(optarg);
+            break;
+        default:
+            usage(argv[0]);
+            exit(EXIT_FAILURE);
+            break;
+        }
+    }
+
+    printf ("checkWhat = %d, checkContinuousCount = %d, checkMaxPeakCount = %d, checkWaitingSeconds = %d\n",
+          checkWhat,checkContinuousCount,checkMaxPeakCount,checkWaitingSeconds);
+
+
+    /*
     for (arg = 1; arg < argc; arg++) {
         if (!strcmp(argv[arg], "-v")) { compfn = &sort_by_vss; continue; }
         if (!strcmp(argv[arg], "-r")) { compfn = &sort_by_rss; continue; }
@@ -231,6 +281,7 @@ int main(int argc, char *argv[]) {
         usage(argv[0]);
         exit(EXIT_FAILURE);
     }
+    */
 
     get_mem_info(mem);
     p_swap = pm_memusage_pswap_create(mem[MEMINFO_SWAP_TOTAL] * 1024);
@@ -469,21 +520,13 @@ int main(int argc, char *argv[]) {
 }
 
 static void usage(char *myname) {
-    fprintf(stderr, "Usage: %s [ -W ] [ -v | -r | -p | -u | -s | -h ]\n"
-                    "    -v  Sort by VSS.\n"
-                    "    -r  Sort by RSS.\n"
-                    "    -p  Sort by PSS.\n"
-                    "    -u  Sort by USS.\n"
-                    "    -s  Sort by swap.\n"
-                    "        (Default sort order is PSS.)\n"
-                    "    -R  Reverse sort order (default is descending).\n"
-                    "    -c  Only show cached (storage backed) pages\n"
-                    "    -C  Only show non-cached (ram/swap backed) pages\n"
-                    "    -k  Only show pages collapsed by KSM\n"
-                    "    -w  Display statistics for working set only.\n"
-                    "    -W  Reset working set of all processes.\n"
-                    "    -h  Display this help screen.\n",
-    myname);
+    fprintf(stderr, "Usage: %s [ -p | -u | -c # | -m # | -w # | -h ]\n", myname);
+    fprintf(stderr, "    -u  : Check by USS.(default)\n");
+    fprintf(stderr, "    -p  : Check by PSS.\n");
+    fprintf(stderr, "    -c  Count : contiguous count when it increase continually  (+1 peak count). default %d:\n",DEFAULT_CHECK_CONTINUOUS_COUNT);
+    fprintf(stderr, "    -m  MaxPeakCount : peaked count (if reached , it is memory leak for pid). default :%d\n",DEFAULT_CHECK_MAX_PEAK_COUNT);
+    fprintf(stderr, "    -w  PeriodicalWaitingSeconds : wating seconds periodically. default :%d\n",DEFAULT_CHECK_WAITING_SECONDS);
+    fprintf(stderr, "    -h  : Display this help screen.\n");
 }
 
 /*
