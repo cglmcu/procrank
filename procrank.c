@@ -76,7 +76,6 @@ static int checkContinuousCount = DEFAULT_CHECK_CONTINUOUS_COUNT;
 static int checkMaxPeakCount = DEFAULT_CHECK_MAX_PEAK_COUNT;
 static int checkWaitingSeconds = DEFAULT_CHECK_WAITING_SECONDS;
 static int checkIsSave=SAVE_OFF;
-static char *checkSaveFilename;
 
 void get_mem_info(uint64_t mem[]) {
     char buffer[1024];
@@ -247,7 +246,7 @@ int main(int argc, char *argv[]) {
             break;
         case 's':
             checkIsSave=SAVE_ON;
-            checkSaveFilename = optarg;
+            (void) check_set_save_filename(optarg);
             break;
         default:
             usage(argv[0]);
@@ -454,7 +453,7 @@ int main(int argc, char *argv[]) {
             printf("%s\n", cmdline);
 
             int rt;
-            rt = check_memory_leak(procs[i]->pid,(int)(procs[i]->usage.vss / 1024),(int)(procs[i]->usage.rss / 1024),(int)(procs[i]->usage.pss / 1024),(int)(procs[i]->usage.uss / 1024),cmdline,checkIsSave,checkSaveFilename,checkWhat,checkContinuousCount,checkMaxPeakCount);
+            rt = check_memory_leak(procs[i]->pid,(int)(procs[i]->usage.vss / 1024),(int)(procs[i]->usage.rss / 1024),(int)(procs[i]->usage.pss / 1024),(int)(procs[i]->usage.uss / 1024),cmdline,checkIsSave,checkWhat,checkContinuousCount,checkMaxPeakCount);
     
             free(procs[i]);
         }
@@ -518,6 +517,7 @@ int main(int argc, char *argv[]) {
                 mem[MEMINFO_TOTAL], mem[MEMINFO_FREE], mem[MEMINFO_BUFFERS],
                 mem[MEMINFO_CACHED], mem[MEMINFO_SHMEM], mem[MEMINFO_SLAB]);
         printf("\n\nwait %d seconds\n\n",checkWaitingSeconds);
+        (void) print_memory_leak();
         sleep(checkWaitingSeconds);
     }
 

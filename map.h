@@ -1,9 +1,13 @@
 #ifdef __cplusplus
 extern "C" {
-    int check_memory_leak(int pid,int vss,int rss,int pss,int uss,char* cmdline,int isSave,char* filename,int checkWhat,int checkContinuousCount,int checkMaxPeakCount);
+    void check_set_save_filename(char *filename);
+    int check_memory_leak(int pid,int vss,int rss,int pss,int uss,char* cmdline,int isSave,int checkWhat,int checkContinuousCount,int checkMaxPeakCount);
+    void print_memory_leak();
 }
 #else 
-int check_memory_leak(int pid,int vss,int rss,int pss,int uss,char* cmdline,int isSave,char* filename,int checkWhat,int checkContinuousCount,int checkMaxPeakCount);
+void check_set_save_filename(char *filename);
+int check_memory_leak(int pid,int vss,int rss,int pss,int uss,char* cmdline,int isSave,int checkWhat,int checkContinuousCount,int checkMaxPeakCount);
+void print_memory_leak();
 #endif
 
 enum {
