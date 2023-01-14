@@ -1,13 +1,12 @@
-# https://makefiletutorial.com/
 # Thanks to Job Vranish (https://spin.atomicobject.com/2016/08/26/makefile-c-projects/)
-TARGET_EXEC := procrank
+TARGET_EXEC := final_program
 
 BUILD_DIR := ./build
-SRC_DIRS := ./
+SRC_DIRS := ./src
 
 # Find all the C and C++ files we want to compile
 # Note the single quotes around the * expressions. Make will incorrectly expand these otherwise.
-SRCS := $(wildcard *.c *.cpp)
+SRCS := $(shell find $(SRC_DIRS) -name '*.cpp' -or -name '*.c' -or -name '*.s')
 
 # String substitution for every C/C++ file.
 # As an example, hello.cpp turns into ./build/hello.cpp.o
