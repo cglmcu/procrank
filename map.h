@@ -17,9 +17,9 @@ enum {
     CHECK_FINAL
 };
 enum {
-    SAVE_OFF,
-    SAVE_ON,
-    SAVE_FINAL
+    OFF,
+    ON,
+    _FINAL
 };
 #define DEFAULT_CHECK_CONTINUOUS_COUNT 2
 #define DEFAULT_CHECK_MAX_PEAK_COUNT 3

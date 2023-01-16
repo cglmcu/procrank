@@ -75,7 +75,11 @@ static int checkWhat = CHECK_USS;
 static int checkContinuousCount = DEFAULT_CHECK_CONTINUOUS_COUNT;
 static int checkMaxPeakCount = DEFAULT_CHECK_MAX_PEAK_COUNT;
 static int checkWaitingSeconds = DEFAULT_CHECK_WAITING_SECONDS;
-static int checkIsSave=SAVE_OFF;
+static int checkIsSave = OFF;
+static int checkIsLeakCommand = OFF;
+static char* checkLeakCommand;
+static int tokenidx = 0;
+static char* token[100];
 
 void get_mem_info(uint64_t mem[]) {
     char buffer[1024];
@@ -222,7 +226,7 @@ int main(int argc, char *argv[]) {
     ws = WS_OFF;
 
     int c;
-    while ((c = getopt (argc, argv, "hpuc:m:w:s:")) != -1){
+    while ((c = getopt (argc, argv, "hpuc:m:w:s:r:")) != -1){
         switch (c)
         {
         case 'h':
@@ -245,8 +249,47 @@ int main(int argc, char *argv[]) {
             checkWaitingSeconds = atoi(optarg);
             break;
         case 's':
-            checkIsSave=SAVE_ON;
+            checkIsSave = ON;
             (void) check_set_save_filename(optarg);
+            break;
+        case 'r':
+            checkIsLeakCommand = ON;
+            checkLeakCommand = optarg;
+            char *delimiter = "{pid}";
+            int dlen = strlen(delimiter);
+            int len = strlen(checkLeakCommand);
+            /* 00{ dlen=4 len=3 */
+            if (dlen > len) {
+                break;
+            }
+            /* {pid} dlen=4 len=4 */
+            if (dlen == len){
+                if (strncmp(delimiter,checkLeakCommand , dlen) == 0){  /* equal */
+                    token[tokenidx] = 0;
+                    tokenidx++;
+                } 
+                break;
+            }
+            /* 0{pid} dlen=4 len=5 */
+            int start = 0;
+            for(int i=0;i<(len-dlen);i++){
+                if (strncmp(delimiter,checkLeakCommand + i , dlen) == 0){  /* equal */
+                    token[tokenidx] = checkLeakCommand + start;
+                    token[tokenidx] = 0;
+                    tokenidx++;
+                }
+            }
+            char *tt;
+            tt = strtok(checkLeakCommand, "{pid}");
+            if (tt == NULL){
+                break;
+            }
+            while(tt){
+                token[tokenidx] = tt;
+                printf("token %d [%s]\n",tokenidx,tt);
+                tokenidx++;
+                tt = strtok(NULL, "{pid}");
+            }
             break;
         default:
             usage(argv[0]);
@@ -454,6 +497,21 @@ int main(int argc, char *argv[]) {
 
             int rt;
             rt = check_memory_leak(procs[i]->pid,(int)(procs[i]->usage.vss / 1024),(int)(procs[i]->usage.rss / 1024),(int)(procs[i]->usage.pss / 1024),(int)(procs[i]->usage.uss / 1024),cmdline,checkIsSave,checkWhat,checkContinuousCount,checkMaxPeakCount);
+            if ((rt > 0) && (checkIsLeakCommand == ON)){
+                /* checkLeakCommand : {pid} -> pid */
+                if (tokenidx > 0){
+                    char buf[BUFSIZ];
+                    strcpy(buf,token[0]);
+                    for(i=1;i<tokenidx;i++){
+                        sprintf(buf,"%s%d%s",buf,procs[i]->pid,token[i]);
+                    }
+                    printf("run command : %s\n",buf);
+                    system(buf);
+                } else if (tokenidx == 0){
+                    printf("run command : %s\n",checkLeakCommand);
+                    system(checkLeakCommand);
+                }
+            }
     
             free(procs[i]);
         }
@@ -531,7 +589,10 @@ static void usage(char *myname) {
     fprintf(stderr, "    -c  Count : contiguous count when it increase continually  (+1 peak count). default %d:\n",DEFAULT_CHECK_CONTINUOUS_COUNT);
     fprintf(stderr, "    -m  MaxPeakCount : peaked count (if reached , it is memory leak for pid). default :%d\n",DEFAULT_CHECK_MAX_PEAK_COUNT);
     fprintf(stderr, "    -w  PeriodicalWaitingSeconds : wating seconds periodically. default :%d\n",DEFAULT_CHECK_WAITING_SECONDS);
-    fprintf(stderr, "    -h  : Display this help screen.\n");
+    fprintf(stderr, "    -s  filename : writing the memory history. it can be run when it has -s option.\n");
+    fprintf(stderr, "    -r  command : run this command when it has memory leak.\n");
+    fprintf(stderr, "                  {pid} will be replaced by pid of memory leak process.\n");
+    fprintf(stderr, "    -h  : Display this help.\n");
 }
 
 /*

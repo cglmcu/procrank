@@ -27,8 +27,8 @@ int check_memory_leak(int pid,int vss,int rss,int pss,int uss,char* cmdline,int 
 {
     std::cout << "CHECK_PSS:" << CHECK_PSS << "    " << "CHECK_USS:" << CHECK_USS << std::endl;
     std::cout << "checkWhat:" << checkWhat << std::endl;
-    std::cout << "SAVE_OFF:" << SAVE_OFF << "    " << "SAVE_ON:" << SAVE_ON << std::endl;
-    if(SAVE_ON == isSave){
+    std::cout << "OFF:" << OFF << "    " << "ON:" << ON << std::endl;
+    if(ON == isSave){
         std::cout << "saving filename:" << savefilename << std::endl;
     }
     if(auto search = map.find(pid); search == map.end()){       // not found
@@ -55,7 +55,7 @@ int check_memory_leak(int pid,int vss,int rss,int pss,int uss,char* cmdline,int 
         map[pid].uss += uss;
         map[pid].currentContinuousCount += 1;
     }
-    return 3;
+    return 1;
 }
 void print_memory_leak()
 {

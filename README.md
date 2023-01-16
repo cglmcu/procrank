@@ -78,6 +78,7 @@ Usage: ./procrank [ -p | -u | -c # | -m # | -w # | -h ]
 # example of mixing c and c++ code
 - example : prorank.c , map.h , map.cpp
     - ```int check_memory_leak(int pid,int vss,int rss,int pss,int uss,char* cmdline,int isSave,char* filename,int checkWhat,int checkContinuousCount,int checkMaxPeakCount);```
+    - additional option : run command when memory leak happens
 
 # reference
 - makefile : https://makefiletutorial.com/
