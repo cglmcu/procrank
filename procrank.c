@@ -71,15 +71,19 @@ enum {
 
 // added by charles
 #include <map.h>
+#define PROCRANK 0          /* if you want to show original procrank results , set 1 */
+#define DEBUG 0             /* if you need more message , set 1 */
 static int checkWhat = CHECK_USS;
 static int checkContinuousCount = DEFAULT_CHECK_CONTINUOUS_COUNT;
 static int checkMaxPeakCount = DEFAULT_CHECK_MAX_PEAK_COUNT;
 static int checkWaitingSeconds = DEFAULT_CHECK_WAITING_SECONDS;
 static int checkIsSave = OFF;
+static char *checkSaveFilename;
 static int checkIsLeakCommand = OFF;
 static char* checkLeakCommand;
 static int tokenidx = 0;
-static char* token[100];
+static int tokenoffset[256];
+static char *delimiter = "{pid}";
 
 void get_mem_info(uint64_t mem[]) {
     char buffer[1024];
@@ -207,6 +211,7 @@ int main(int argc, char *argv[]) {
     bool has_swap = false, has_zram = false;
     uint64_t required_flags = 0;
     uint64_t flags_mask = 0;
+    uint32_t wait_count=1;
 
     #define WS_OFF   0
     #define WS_ONLY  1
@@ -250,46 +255,31 @@ int main(int argc, char *argv[]) {
             break;
         case 's':
             checkIsSave = ON;
+            checkSaveFilename = optarg;
             (void) check_set_save_filename(optarg);
             break;
         case 'r':
             checkIsLeakCommand = ON;
             checkLeakCommand = optarg;
-            char *delimiter = "{pid}";
             int dlen = strlen(delimiter);
             int len = strlen(checkLeakCommand);
-            /* 00{ dlen=4 len=3 */
-            if (dlen > len) {
-                break;
-            }
-            /* {pid} dlen=4 len=4 */
-            if (dlen == len){
-                if (strncmp(delimiter,checkLeakCommand , dlen) == 0){  /* equal */
-                    token[tokenidx] = 0;
+            for(int tokeni=0;tokeni<(len-dlen);tokeni++){
+                if (strncmp(delimiter,checkLeakCommand + tokeni , dlen) == 0){  /* equal */
+                    tokenoffset[tokenidx] = tokeni;
                     tokenidx++;
-                } 
-                break;
-            }
-            /* 0{pid} dlen=4 len=5 */
-            int start = 0;
-            for(int i=0;i<(len-dlen);i++){
-                if (strncmp(delimiter,checkLeakCommand + i , dlen) == 0){  /* equal */
-                    token[tokenidx] = checkLeakCommand + start;
-                    token[tokenidx] = 0;
-                    tokenidx++;
+                    if(tokenidx >= 256){
+                        fprintf(stderr,"too long , wrong command : tokenidx %d\n",tokenidx);
+                        printf("too long , wrong command : tokenidx %d\n",tokenidx);
+                        exit(EXIT_FAILURE);
+                    }
                 }
             }
-            char *tt;
-            tt = strtok(checkLeakCommand, "{pid}");
-            if (tt == NULL){
-                break;
+            for(int tokeni=0;tokeni<tokenidx;tokeni++){
+                if(DEBUG) printf("%d token offset %d\n",tokeni,tokenoffset[tokeni]);
             }
-            while(tt){
-                token[tokenidx] = tt;
-                printf("token %d [%s]\n",tokenidx,tt);
-                tokenidx++;
-                tt = strtok(NULL, "{pid}");
-            }
+            /* 00{ dlen=4 len=3 */
+            /* {pid} dlen=4 len=4 */
+            /* 0{pid} dlen=4 len=5 */
             break;
         default:
             usage(argv[0]);
@@ -417,26 +407,26 @@ int main(int argc, char *argv[]) {
             }
         }
     
-        printf("%5s  ", "PID");
+        if(PROCRANK) printf("%5s  ", "PID");
         if (ws) {
-            printf("%12s  %12s  %12s  ", "WRss", "WPss", "WUss");
+            if(PROCRANK) printf("%12s  %12s  %12s  ", "WRss", "WPss", "WUss");
             if (has_swap) {
-                printf("%12s  %12s  %12s  ", "WSwap", "WPSwap", "WUSwap");
+                if(PROCRANK) printf("%12s  %12s  %12s  ", "WSwap", "WPSwap", "WUSwap");
                 if (has_zram) {
-                    printf("%12s  ", "WZSwap");
+                    if(PROCRANK) printf("%12s  ", "WZSwap");
                 }
             }
         } else {
-            printf("%12s  %12s  %12s  %12s  ", "Vss", "Rss", "Pss", "Uss");
+            if(PROCRANK) printf("%12s  %12s  %12s  %12s  ", "Vss", "Rss", "Pss", "Uss");
             if (has_swap) {
-                printf("%12s  %12s  %12s  ", "Swap", "PSwap", "USwap");
+                if(PROCRANK) printf("%12s  %12s  %12s  ", "Swap", "PSwap", "USwap");
                 if (has_zram) {
-                    printf("%12s  ", "ZSwap");
+                    if(PROCRANK) printf("%12s  ", "ZSwap");
                 }
             }
         }
     
-        printf("%s\n", "cmdline");
+        if(PROCRANK) printf("%s\n", "cmdline");
     
         total_pss = 0;
         total_uss = 0;
@@ -459,16 +449,16 @@ int main(int argc, char *argv[]) {
             total_uss += procs[i]->usage.uss;
             total_swap += procs[i]->usage.swap;
     
-            printf("%5d  ", procs[i]->pid);
+            if(PROCRANK) printf("%5d  ", procs[i]->pid);
     
             if (ws) {
-                printf("%11zuK  %11zuK  %11zuK  ",
+                if(PROCRANK) printf("%11zuK  %11zuK  %11zuK  ",
                     procs[i]->usage.rss / 1024,
                     procs[i]->usage.pss / 1024,
                     procs[i]->usage.uss / 1024
                 );
             } else {
-                printf("%11zuK  %11zuK  %11zuK  %11zuK  ",
+                if(PROCRANK) printf("%11zuK  %11zuK  %11zuK  %11zuK  ",
                     procs[i]->usage.vss / 1024,
                     procs[i]->usage.rss / 1024,
                     procs[i]->usage.pss / 1024,
@@ -480,34 +470,50 @@ int main(int argc, char *argv[]) {
                 pm_swapusage_t su;
     
                 pm_memusage_pswap_get_usage(&procs[i]->usage, &su);
-                printf("%11zuK  ", procs[i]->usage.swap / 1024);
-                printf("%11zuK  ", su.proportional / 1024);
-                printf("%11zuK  ", su.unique / 1024);
+                if(PROCRANK) printf("%11zuK  ", procs[i]->usage.swap / 1024);
+                if(PROCRANK) printf("%11zuK  ", su.proportional / 1024);
+                if(PROCRANK) printf("%11zuK  ", su.unique / 1024);
                 total_pswap += su.proportional;
                 total_uswap += su.unique;
                 pm_memusage_pswap_free(&procs[i]->usage);
                 if (has_zram) {
                     size_t zpswap = su.proportional * zram_cr;
-                    printf("%6zuK  ", zpswap / 1024);
+                    if(PROCRANK) printf("%6zuK  ", zpswap / 1024);
                     total_zswap += zpswap;
                 }
             }
     
-            printf("%s\n", cmdline);
+            if(PROCRANK) printf("%s\n", cmdline);
 
             int rt;
-            rt = check_memory_leak(procs[i]->pid,(int)(procs[i]->usage.vss / 1024),(int)(procs[i]->usage.rss / 1024),(int)(procs[i]->usage.pss / 1024),(int)(procs[i]->usage.uss / 1024),cmdline,checkIsSave,checkWhat,checkContinuousCount,checkMaxPeakCount);
+            rt = check_memory_leak(procs[i]->pid,(int)(procs[i]->usage.vss / 1024),(int)(procs[i]->usage.rss / 1024),(int)(procs[i]->usage.pss / 1024),(int)(procs[i]->usage.uss / 1024),cmdline,checkIsSave,checkWhat,checkContinuousCount,checkMaxPeakCount,DEBUG);
             if ((rt > 0) && (checkIsLeakCommand == ON)){
                 /* checkLeakCommand : {pid} -> pid */
                 if (tokenidx > 0){
                     char buf[BUFSIZ];
-                    strcpy(buf,token[0]);
-                    for(i=1;i<tokenidx;i++){
-                        sprintf(buf,"%s%d%s",buf,procs[i]->pid,token[i]);
+                    char *pp = buf;
+                    int len = strlen(checkLeakCommand);
+                    int dlen = strlen(delimiter);
+                    memset(buf,0,len);
+                    int tokenstart = 0;
+                    for(int tokeni=0;tokeni<len;){
+                        if(tokenoffset[tokenstart] == tokeni){
+                            snprintf(buf,BUFSIZ,"%s%d",pp,procs[i]->pid);
+                            if(DEBUG) printf("%d + buf:%s\n",tokeni,buf);
+                            tokeni += dlen;
+                            tokenstart++;
+                        }
+                        else {
+                            snprintf(buf,BUFSIZ,"%s%c",pp,checkLeakCommand[tokeni]);
+                            if(DEBUG) printf("%d - buf:%s\n",tokeni,buf);
+                            tokeni++;
+                        }
                     }
+                    printf("pid %d:shell %s\n",procs[i]->pid,cmdline);
                     printf("run command : %s\n",buf);
                     system(buf);
                 } else if (tokenidx == 0){
+                    printf("pid %d:shell %s\n",procs[i]->pid,cmdline);
                     printf("run command : %s\n",checkLeakCommand);
                     system(checkLeakCommand);
                 }
@@ -527,55 +533,55 @@ int main(int argc, char *argv[]) {
         printf("%5s  ", "");
     
         if (ws) {
-            printf("%12s  %12s  %12s  ", "", "------", "------");
+            if(PROCRANK) printf("%12s  %12s  %12s  ", "", "------", "------");
         } else {
-            printf("%12s  %12s  %12s  %12s  ", "", "", "------", "------");
+            if(PROCRANK) printf("%12s  %12s  %12s  %12s  ", "", "", "------", "------");
         }
     
         if (has_swap) {
-            printf("%12s  %12s  %12s  ", "------", "------", "------");
+            if(PROCRANK) printf("%12s  %12s  %12s  ", "------", "------", "------");
             if (has_zram) {
-                printf("%12s  ", "------");
+                if(PROCRANK) printf("%12s  ", "------");
             }
         }
     
-        printf("%s\n", "------");
+        if(PROCRANK) printf("%s\n", "------");
     
         /* Print the total line */
-        printf("%5s  ", "");
+        if(PROCRANK) printf("%5s  ", "");
         if (ws) {
-            printf("%12s  %11" PRIu64 "K  %11" PRIu64 "K  ",
+            if(PROCRANK) printf("%12s  %11" PRIu64 "K  %11" PRIu64 "K  ",
                 "", total_pss / 1024, total_uss / 1024);
         } else {
-            printf("%12s  %12s  %11" PRIu64 "K  %11" PRIu64 "K  ",
+            if(PROCRANK) printf("%12s  %12s  %11" PRIu64 "K  %11" PRIu64 "K  ",
                 "", "", total_pss / 1024, total_uss / 1024);
         }
     
         if (has_swap) {
-            printf("%11" PRIu64 "K  ", total_swap / 1024);
-            printf("%11" PRIu64 "K  ", total_pswap / 1024);
-            printf("%11" PRIu64 "K  ", total_uswap / 1024);
+            if(PROCRANK) printf("%11" PRIu64 "K  ", total_swap / 1024);
+            if(PROCRANK) printf("%11" PRIu64 "K  ", total_pswap / 1024);
+            if(PROCRANK) printf("%11" PRIu64 "K  ", total_uswap / 1024);
             if (has_zram) {
-                printf("%11" PRIu64 "K  ", total_zswap / 1024);
+                if(PROCRANK) printf("%11" PRIu64 "K  ", total_zswap / 1024);
             }
         }
     
-        printf("TOTAL\n");
+        if(PROCRANK) printf("TOTAL\n");
     
-        printf("\n");
+        if(PROCRANK) printf("\n");
     
         if (has_swap) {
-            printf("ZRAM: %" PRIu64 "K physical used for %" PRIu64 "K in swap "
+            if(PROCRANK) printf("ZRAM: %" PRIu64 "K physical used for %" PRIu64 "K in swap "
                     "(%" PRIu64 "K total swap)\n",
                     mem[MEMINFO_ZRAM_TOTAL], (mem[MEMINFO_SWAP_TOTAL] - mem[MEMINFO_SWAP_FREE]),
                     mem[MEMINFO_SWAP_TOTAL]);
         }
-        printf(" RAM: %" PRIu64 "K total, %" PRIu64 "K free, %" PRIu64 "K buffers, "
+        if(PROCRANK) printf(" RAM: %" PRIu64 "K total, %" PRIu64 "K free, %" PRIu64 "K buffers, "
                 "%" PRIu64 "K cached, %" PRIu64 "K shmem, %" PRIu64 "K slab\n",
                 mem[MEMINFO_TOTAL], mem[MEMINFO_FREE], mem[MEMINFO_BUFFERS],
                 mem[MEMINFO_CACHED], mem[MEMINFO_SHMEM], mem[MEMINFO_SLAB]);
-        printf("\n\nwait %d seconds\n\n",checkWaitingSeconds);
-        (void) print_memory_leak();
+        (void) print_memory_leak(checkWhat,checkIsSave,checkSaveFilename,wait_count);
+        printf("\n\nwait %d seconds : wait count %d\n\n",checkWaitingSeconds,wait_count);
         sleep(checkWaitingSeconds);
     }
 
@@ -592,6 +598,7 @@ static void usage(char *myname) {
     fprintf(stderr, "    -s  filename : writing the memory history. it can be run when it has -s option.\n");
     fprintf(stderr, "    -r  command : run this command when it has memory leak.\n");
     fprintf(stderr, "                  {pid} will be replaced by pid of memory leak process.\n");
+    fprintf(stderr, "                  ex) -r \"echo {pid}\"\n");
     fprintf(stderr, "    -h  : Display this help.\n");
 }
 

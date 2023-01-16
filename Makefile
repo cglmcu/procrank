@@ -29,6 +29,9 @@ CPPFLAGS := $(INC_FLAGS) -MMD -MP
 # The final build step.
 $(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
 	$(CXX) $(OBJS) -o $@ $(LDFLAGS)
+run:
+	echo "sudo $(BUILD_DIR)/$(TARGET_EXEC) -r "echo {pid} ggg {pid} ttt"  -w 10 -s \"aaa.csv\""
+	sudo $(BUILD_DIR)/$(TARGET_EXEC) -r "echo {pid} ggg {pid} ttt"  -w 10 -s "aaa.csv"
 
 # Build step for C source
 $(BUILD_DIR)/%.c.o: %.c
@@ -38,7 +41,7 @@ $(BUILD_DIR)/%.c.o: %.c
 # Build step for C++ source
 $(BUILD_DIR)/%.cpp.o: %.cpp
 	mkdir -p $(dir $@)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@ -std=c++17
 
 
 .PHONY: clean
