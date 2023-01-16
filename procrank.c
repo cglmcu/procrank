@@ -498,13 +498,13 @@ int main(int argc, char *argv[]) {
                     int tokenstart = 0;
                     for(int tokeni=0;tokeni<len;){
                         if(tokenoffset[tokenstart] == tokeni){
-                            snprintf(buf,BUFSIZ,"%s%d",pp,procs[i]->pid);
+                            sprintf(buf,"%s%d",pp,procs[i]->pid);
                             if(DEBUG) printf("%d + buf:%s\n",tokeni,buf);
                             tokeni += dlen;
                             tokenstart++;
                         }
                         else {
-                            snprintf(buf,BUFSIZ,"%s%c",pp,checkLeakCommand[tokeni]);
+                            sprintf(buf,"%s%c",pp,checkLeakCommand[tokeni]);
                             if(DEBUG) printf("%d - buf:%s\n",tokeni,buf);
                             tokeni++;
                         }
@@ -581,7 +581,8 @@ int main(int argc, char *argv[]) {
                 mem[MEMINFO_TOTAL], mem[MEMINFO_FREE], mem[MEMINFO_BUFFERS],
                 mem[MEMINFO_CACHED], mem[MEMINFO_SHMEM], mem[MEMINFO_SLAB]);
         (void) print_memory_leak(checkWhat,checkIsSave,checkSaveFilename,wait_count);
-        printf("\n\nwait %d seconds : wait count %d\n\n",checkWaitingSeconds,wait_count);
+        printf("\n\ncheckContinuousCount %d : checkMaxPeakCount %d\n",checkContinuousCount,checkMaxPeakCount);
+        printf("wait %d seconds : wait count %d\n\n",checkWaitingSeconds,wait_count);
         sleep(checkWaitingSeconds);
     }
 

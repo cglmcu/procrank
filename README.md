@@ -51,7 +51,22 @@ Usage: ./procrank [ -p | -u | -c # | -m # | -w # | -h ]
 ```
 
 # how to run
-- make
+- compile 
+    - ```make```
+- run procrank with function to detect memroy leak 
+    - ```make run```
+- compile of memalloc generator for test
+    - cd memgen; ```make```
+- run mem allocator for test
+    - cd memgen; ```make run```
+
+# output example 
+```
+pid 25993:shell build/memgen
+run command : echo 25993 ggg 25993 ttt
+25993 ggg 25993 ttt
+```
+
 
 # database
 - map - key : pid
